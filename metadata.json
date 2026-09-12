@@ -1,0 +1,6 @@
+{
+  "name": "Spotify Downloader",
+  "description": "Telegram Mini App untuk mengunduh lagu Spotify full durasi dengan metadata dan cover art.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

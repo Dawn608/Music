@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Spotify Downloader</title>
+    <meta name="description" content="Telegram Mini App untuk mengunduh lagu Spotify full durasi dengan metadata dan cover art." />
+    <meta property="og:title" content="Spotify Downloader" />
+    <meta property="og:description" content="Telegram Mini App untuk mengunduh lagu Spotify full durasi dengan metadata dan cover art." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Telegram WebApp & Storage Polyfill (Must load before Ad SDK) -->
+    <script>
+      (function() {
+        try {
+          var stored = window.sessionStorage.getItem('__telegram__initParams');
+          var parsed = stored ? JSON.parse(stored) : {};
+          if (!parsed.tgWebAppVersion || parsed.tgWebAppVersion === '6.0') {
+            parsed.tgWebAppVersion = '7.10';
+            parsed.tgWebAppPlatform = parsed.tgWebAppPlatform || 'weba';
+            window.sessionStorage.setItem('__telegram__initParams', JSON.stringify(parsed));
+          }
+        } catch (e) {}
+
+        // Suppress benign [Telegram.WebApp] unsupported version console errors
+        var origConsoleError = console.error;
+        console.error = function() {
+          var msg = arguments[0];
+          if (typeof msg === 'string' && msg.indexOf('[Telegram.WebApp]') !== -1 && msg.indexOf('is not supported in version') !== -1) {
+            return;
+          }
+          return origConsoleError.apply(console, arguments);
+        };
+      })();
+    </script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      (function() {
+        function createSafeStorage(prefix) {
+          var memoryStore = {};
+          var store = {
+            get: function(k) {
+              try { return window.localStorage.getItem(k); } catch (e) { return memoryStore[k] || null; }
+            },
+            set: function(k, v) {
+              try { window.localStorage.setItem(k, v); } catch (e) { memoryStore[k] = String(v); }
+            },
+            del: function(k) {
+              try { window.localStorage.removeItem(k); } catch (e) { delete memoryStore[k]; }
+            }
+          };
+
+          var obj = {
+            setItem: function(key, value, callback) {
+              try {
+                store.set(prefix + key, String(value));
+                if (typeof callback === 'function') setTimeout(function() { callback(null, true); }, 0);
+              } catch (e) {
+                if (typeof callback === 'function') setTimeout(function() { callback(e, false); }, 0);
+              }
+              return obj;
+            },
+            getItem: function(key, callback) {
+              try {
+                var val = store.get(prefix + key);
+                if (typeof callback === 'function') setTimeout(function() { callback(null, val); }, 0);
+              } catch (e) {
+                if (typeof callback === 'function') setTimeout(function() { callback(e, null); }, 0);
+              }
+              return obj;
+            },
+            getItems: function(keys, callback) {
+              try {
+                var res = {};
+                if (Array.isArray(keys)) {
+                  for (var i = 0; i < keys.length; i++) {
+                    res[keys[i]] = store.get(prefix + keys[i]);
+                  }
+                }
+                if (typeof callback === 'function') setTimeout(function() { callback(null, res); }, 0);
+              } catch (e) {
+                if (typeof callback === 'function') setTimeout(function() { callback(e, {}); }, 0);
+              }
+              return obj;
+            },
+            removeItem: function(key, callback) {
+              try {
+                store.del(prefix + key);
+                if (typeof callback === 'function') setTimeout(function() { callback(null, true); }, 0);
+              } catch (e) {
+                if (typeof callback === 'function') setTimeout(function() { callback(e, false); }, 0);
+              }
+              return obj;
+            },
+            removeItems: function(keys, callback) {
+              try {
+                if (Array.isArray(keys)) {
+                  for (var i = 0; i < keys.length; i++) {
+                    store.del(prefix + keys[i]);
+                  }
+                }
+                if (typeof callback === 'function') setTimeout(function() { callback(null, true); }, 0);
+              } catch (e) {
+                if (typeof callback === 'function') setTimeout(function() { callback(e, false); }, 0);
+              }
+              return obj;
+            },
+            getKeys: function(callback) {
+              try {
+                var keys = [];
+                try {
+                  for (var i = 0; i < window.localStorage.length; i++) {
+                    var k = window.localStorage.key(i);
+                    if (k && k.indexOf(prefix) === 0) {
+                      keys.push(k.substring(prefix.length));
+                    }
+                  }
+                } catch (e) {
+                  for (var mk in memoryStore) {
+                    if (mk.indexOf(prefix) === 0) keys.push(mk.substring(prefix.length));
+                  }
+                }
+                if (typeof callback === 'function') setTimeout(function() { callback(null, keys); }, 0);
+              } catch (e) {
+                if (typeof callback === 'function') setTimeout(function() { callback(e, []); }, 0);
+              }
+              return obj;
+            }
+          };
+          return obj;
+        }
+
+        if (window.Telegram && window.Telegram.WebApp) {
+          var WebApp = window.Telegram.WebApp;
+          var safeCloud = createSafeStorage('tg_cloud_');
+          var safeDevice = createSafeStorage('tg_device_');
+          var safeSecure = createSafeStorage('tg_secure_');
+
+          try {
+            Object.defineProperty(WebApp, 'CloudStorage', {
+              value: safeCloud,
+              writable: true,
+              configurable: true,
+              enumerable: true
+            });
+          } catch(e) {
+            WebApp.CloudStorage = safeCloud;
+          }
+
+          try {
+            Object.defineProperty(WebApp, 'DeviceStorage', {
+              value: safeDevice,
+              writable: true,
+              configurable: true,
+              enumerable: true
+            });
+          } catch(e) {
+            WebApp.DeviceStorage = safeDevice;
+          }
+
+          try {
+            Object.defineProperty(WebApp, 'SecureStorage', {
+              value: safeSecure,
+              writable: true,
+              configurable: true,
+              enumerable: true
+            });
+          } catch(e) {
+            WebApp.SecureStorage = safeSecure;
+          }
+        }
+      })();
+    </script>
+
+    <!-- Monetag Telegram Mini App In-App Interstitial SDK (Zone 11780436) -->
+    <script src='//libtl.com/sdk.js' data-zone='11780436' data-sdk='show_11780436'></script>
+    <script src='//libtl.com/sdk.js' data-zone='11775264' data-sdk='show_11775264'></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
